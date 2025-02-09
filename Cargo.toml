@@ -1,5 +1,5 @@
 [package]
-name = "gas-rs"
+name = "gasrs"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,11 +8,11 @@ debug = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name = "gas_rs"
+name = "gasrs"
 path = "src/main.rs" # Force Cargo to treat `main.rs` as the library
 
 [[bin]]
-name = "gas-rs"
+name = "gasrs"
 path = "src/main.rs"
 
 [dependencies]

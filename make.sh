@@ -30,6 +30,10 @@ build_native() {
   ./target/release/$PROJECT_NAME
 }
 
+run_native() {
+  cargo run --release
+}
+
 build_wasm() {
   echo "🔄 Cleaning previous WASM build..."
   rm -rf pkg

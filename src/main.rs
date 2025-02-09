@@ -4,6 +4,9 @@ use view::View;
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
     pub use tokio;
+    pub use winit::application::ApplicationHandler;
+    pub use winit::event_loop::EventLoop;
+    pub use winit::event_loop::ActiveEventLoop;
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -35,26 +38,55 @@ async fn setup(view: &mut View) {
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() {
+    use std::time::Instant; // ✅ Import Instant for elapsed time tracking
+
     let (mut view, event_loop) = View::new(800, 600);
-    setup(&mut view).await; // Clone `view` for use in async context
+    setup(&mut view).await;
 
     let window = view.window.clone(); // Clone the `Arc<Window>` for use in the event loop
+    let start_time = Instant::now(); // ✅ Track start time
 
-    event_loop.run(move |event, _| {
-        match event {
-            winit::event::Event::WindowEvent { event, .. } => match event {
+    struct MyApp {
+        view: View,
+        start_time: Instant,
+    }
+
+    impl MyApp {
+        fn new(_event_loop: &EventLoop<Self>) -> Self {
+            let (mut view, _) = View::new(800, 600);
+            Self {
+                view,
+                start_time: Instant::now(),
+            }
+        }
+    }
+
+    impl ApplicationHandler for MyApp {
+        fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+            event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+        }
+
+        fn window_event(
+            &mut self,
+            event_loop: &ActiveEventLoop,
+            _window_id: winit::window::WindowId,
+            event: winit::event::WindowEvent,
+        ) {
+            match event {
                 winit::event::WindowEvent::CloseRequested => {
                     println!("Closing window...");
-                    std::process::exit(0);
+                    event_loop.exit();
                 }
                 _ => {}
-            },
-            winit::event::Event::AboutToWait => {
-                window.request_redraw(); // ✅ Use `window` to request redraw
             }
-            _ => {}
         }
-    });
+
+        fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+            let elapsed_time: f64 = self.start_time.elapsed().as_millis() as f64; // ✅ Convert to ms
+            self.view.render_frame(elapsed_time);
+            self.view.window.request_redraw();
+        }
+    }
 }
 
 /// **WebAssembly Main Function**
@@ -64,32 +96,37 @@ pub fn main() {
     console_error_panic_hook::set_once();
 
     spawn_local(async move {
-        let view = Rc::new(RefCell::new(View::new(800, 600))); // ✅ Wrap in `Rc<RefCell<View>>`
-        setup(&mut view.borrow_mut()).await;
+        let view = Rc::new(RefCell::new(View::new(800, 600))); // ✅ Use `Rc<RefCell<View>>`
+        setup(&mut view.borrow_mut()).await; // ✅ Now mutable borrow works!
 
-        let view_clone = view.clone(); // ✅ Clone for closure
         let performance = window()
             .unwrap()
             .performance()
-            .expect("❌ Performance API not available");
-        let last_time = Rc::new(Cell::new(performance.now())); // ✅ Track last timestamp
+            .expect("❌ Performance API missing");
 
-        let closure = Rc::new(RefCell::new(None));
-        let closure_clone = closure.clone();
+        let closure_handle = Rc::new(RefCell::new(None)); // ✅ Store closure reference
+        let closure_clone = closure_handle.clone();
 
-        *closure.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-            let now = performance.now();
-            let elapsed_time = (now - last_time.get()) as f32 / 1000.0; // ✅ Convert to seconds
-            last_time.set(now);
+        // ✅ Define the closure once
+        let render_loop = Closure::wrap(Box::new({
+            let view = view.clone();
+            let closure_clone = closure_clone.clone();
 
-            let view = view_clone.borrow_mut(); // ✅ Access `view` mutably
-            view.render_frame(elapsed_time);
+            move || {
+                let now = performance.now();
+                view.borrow().render_frame(now); // ✅ Call render function
 
-            request_animation_frame(closure_clone.borrow().as_ref().unwrap());
-        }) as Box<dyn Fn()>));
+                if let Some(callback) = closure_clone.borrow().as_ref() {
+                    request_animation_frame(callback);
+                }
+            }
+        }) as Box<dyn Fn()>);
 
-        request_animation_frame(closure.borrow().as_ref().unwrap());
-        closure.borrow_mut().take().unwrap().forget(); // ✅ Keep closure alive
+        // ✅ Store the closure so it stays alive
+        *closure_handle.borrow_mut() = Some(render_loop);
+
+        // ✅ Start the animation loop
+        request_animation_frame(closure_handle.borrow().as_ref().unwrap());
     });
 }
 

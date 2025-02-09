@@ -310,11 +310,11 @@ impl View {
         }
     }
 
-    pub fn render_frame(&self, time: f32) {
-        console::log_1(&"render_frame".into());
+    pub fn render_frame(&self, time_ms: f64) {
+        let time_sec = time_ms / 1000.0; // ✅ Convert milliseconds to seconds
 
-        let r = (time.sin() * 0.5 + 0.5) as f32;
-        let g = (time.cos() * 0.5 + 0.5) as f32;
+        let r = (time_sec.sin() * 0.5 + 0.5) as f32; // ✅ Cycles every 2π seconds
+        let g = (time_sec.cos() * 0.5 + 0.5) as f32; // ✅ Cycles every 2π seconds
         let b = 0.5; // Static blue
 
         unsafe {
