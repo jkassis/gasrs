@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Native",
+      "type": "shell",
+      "options": {
+        "env": {
+          "OMP_NUM_THREADS": "4",
+          "GST_DEBUG": "*:3",
+        }
+      },
+      "command": [
+        "cargo"
+      ],
+      "args": [
+        "build",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    },
+    {
+      "label": "Build WASM",
+      "type": "shell",
+      "options": {
+        "env": {
+          "OMP_NUM_THREADS": "4",
+          "GST_DEBUG": "*:3"
+        }
+      },
+      "command": "wasm-pack",
+      "args": [
+        "build",
+        "--target",
+        "web",
+        "--out-dir",
+        "pkg"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    }
+  ]
+}

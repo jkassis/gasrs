@@ -1,0 +1,9 @@
+{
+  "rust-analyzer.cargo.extraEnv": {
+    "GST_GL_API": "opengl",
+    "GST_DEBUG": "*:3",
+  },
+  "rust-analyzer.linkedProjects": [
+    "rust-project.json"
+  ]
+}

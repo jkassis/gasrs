@@ -1,0 +1,39 @@
+[package]
+name = "gas-rs"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+debug = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "gas_rs"
+path = "src/main.rs" # Force Cargo to treat `main.rs` as the library
+
+[[bin]]
+name = "gas-rs"
+path = "src/main.rs"
+
+[dependencies]
+cstring = "0.1.1"
+glow = "0.16.0"
+image = "0.25.5"
+reqwest = { version = "0.12.12", features = ["rustls-tls"] }
+
+
+# ✅ Only compile these for native builds
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+glutin = "0.32.2"
+glutin-winit = "0.5.0"
+winit = "0.30.9"
+sdl2 = "0.35"  # ✅ Only include SDL2 in native builds
+tokio = { version = "1.43.0", features = ["full"] }
+
+# ✅ Only compile these for WASM builds
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Window", "HtmlCanvasElement", "Response", "console", "Performance"] }
+js-sys = "0.3"

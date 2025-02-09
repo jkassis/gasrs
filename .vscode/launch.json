@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "Build Native",
+      "stopOnEntry": false,
+      "sourceLanguages": [
+        "rust"
+      ],
+      "env": {
+        "RUST_LOG": "debug", // Enable debug logging
+        "OMP_NUM_THREADS": "4",
+        "GST_DEBUG": "*:3",
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}
