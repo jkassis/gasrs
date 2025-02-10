@@ -3,10 +3,11 @@ use view::View;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
+    pub use glutin::prelude::GlSurface;
     pub use std::time::Instant;
     pub use tokio;
     pub use winit::application::ApplicationHandler;
-    pub use winit::event_loop::{EventLoop, ActiveEventLoop};
+    pub use winit::event_loop::ActiveEventLoop;
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -29,29 +30,28 @@ use web::*;
 /// **Common async setup function (Runs in both Native & WebAssembly)**
 async fn setup(view: &mut View) {
     // Load a texture asynchronously
-    let creditCard = "https://m.media-amazon.com/images/G/01/credit/CBCC/acq-marketing/maple/Q123-1103_US_CBCC_ACQ_Maple_Thumbnail_126x80._CB613265021_.png";
-    view.load_texture(creditCard).await;
-    view.bind_texture(creditCard);
+    let credit_card = "https://m.media-amazon.com/images/G/01/credit/CBCC/acq-marketing/maple/Q123-1103_US_CBCC_ACQ_Maple_Thumbnail_126x80._CB613265021_.png";
+    view.load_texture(credit_card).await;
+    view.bind_texture(credit_card);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct MyApp<'a> {
     view: &'a mut View,
     start_time: Instant,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a> MyApp<'a> {
     fn new(view: &'a mut View) -> Self {
         Self {
-          view: view,
+            view,
             start_time: Instant::now(),
         }
     }
-
-    async fn run(&mut self) {
-  setup(self.view).await;
-    }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<'a> ApplicationHandler for MyApp<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
@@ -63,18 +63,19 @@ impl<'a> ApplicationHandler for MyApp<'a> {
         _window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        match event {
-            winit::event::WindowEvent::CloseRequested => {
-                println!("Closing window...");
-                event_loop.exit();
-            }
-            _ => {}
+        if event == winit::event::WindowEvent::CloseRequested {
+            println!("Closing window...");
+            event_loop.exit();
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         let elapsed_time: f64 = self.start_time.elapsed().as_millis() as f64; // ✅ Convert to ms
         self.view.render_frame(elapsed_time);
+        self.view
+            .surface
+            .swap_buffers(&self.view.gl_context)
+            .expect("Failed to swap buffers");
         self.view.window.request_redraw();
     }
 }
@@ -83,13 +84,10 @@ impl<'a> ApplicationHandler for MyApp<'a> {
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() {
-  let (mut view, event_loop) = View::new(800, 600);
-  let mut my_app = MyApp::new(&mut view);
-
-  my_app.run();
-
-  // hangs until window closed
-  event_loop.run_app(&mut my_app);
+    let (mut view, event_loop) = View::new(800, 600);
+    setup(&mut view).await;
+    let mut my_app = MyApp::new(&mut view);
+    event_loop.run_app(&mut my_app).unwrap();
 }
 
 /// **WebAssembly Main Function**

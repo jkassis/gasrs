@@ -11,7 +11,10 @@ mod native {
 
     pub use glutin::{
         config::ConfigTemplateBuilder,
-        context::{ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentGlContext, Version},
+        context::{
+            ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentGlContext,
+            PossiblyCurrentContext, Version,
+        },
         display::{GetGlDisplay, GlDisplay},
         surface::{SurfaceAttributesBuilder, WindowSurface},
     };
@@ -44,6 +47,10 @@ pub struct View {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub window: Arc<Window>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub gl_context: glutin::context::PossiblyCurrentContext,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub surface: glutin::surface::Surface<glutin::surface::WindowSurface>,
 }
 
 impl View {
@@ -95,7 +102,7 @@ impl View {
                 .unwrap()
         };
 
-        let _gl_context = not_current_gl_context.make_current(&surface).unwrap();
+        let gl_context = not_current_gl_context.make_current(&surface).unwrap();
 
         // ✅ Load OpenGL function pointers
         let gl = Arc::new(unsafe {
@@ -105,12 +112,18 @@ impl View {
             })
         });
 
+        unsafe {
+            gl.viewport(0, 0, width as i32, height as i32); // ✅ Ensure viewport matches window
+        }
+
         (
             Self {
                 gl,
+                gl_context,
+                height,
+                surface,
                 textures: HashMap::new(),
                 width,
-                height,
                 window,
             },
             event_loop,
