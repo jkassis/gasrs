@@ -95,7 +95,7 @@ impl View {
                 .unwrap()
         };
 
-        let gl_context = not_current_gl_context.make_current(&surface).unwrap();
+        let _gl_context = not_current_gl_context.make_current(&surface).unwrap();
 
         // ✅ Load OpenGL function pointers
         let gl = Arc::new(unsafe {

@@ -22,8 +22,6 @@ clean() {
 }
 
 build_native() {
-  echo "🔄 Cleaning previous native build..."
-  cargo clean
   echo "🚀 Building native version..."
   cargo build --release
   echo "🏃 Running native executable..."

@@ -3,10 +3,10 @@ use view::View;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
+    pub use std::time::Instant;
     pub use tokio;
     pub use winit::application::ApplicationHandler;
-    pub use winit::event_loop::EventLoop;
-    pub use winit::event_loop::ActiveEventLoop;
+    pub use winit::event_loop::{EventLoop, ActiveEventLoop};
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -34,59 +34,62 @@ async fn setup(view: &mut View) {
     view.bind_texture(creditCard);
 }
 
+struct MyApp<'a> {
+    view: &'a mut View,
+    start_time: Instant,
+}
+
+impl<'a> MyApp<'a> {
+    fn new(view: &'a mut View) -> Self {
+        Self {
+          view: view,
+            start_time: Instant::now(),
+        }
+    }
+
+    async fn run(&mut self) {
+  setup(self.view).await;
+    }
+}
+
+impl<'a> ApplicationHandler for MyApp<'a> {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: winit::window::WindowId,
+        event: winit::event::WindowEvent,
+    ) {
+        match event {
+            winit::event::WindowEvent::CloseRequested => {
+                println!("Closing window...");
+                event_loop.exit();
+            }
+            _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        let elapsed_time: f64 = self.start_time.elapsed().as_millis() as f64; // ✅ Convert to ms
+        self.view.render_frame(elapsed_time);
+        self.view.window.request_redraw();
+    }
+}
+
 /// **Native Main Function (Uses Tokio)**
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() {
-    use std::time::Instant; // ✅ Import Instant for elapsed time tracking
+  let (mut view, event_loop) = View::new(800, 600);
+  let mut my_app = MyApp::new(&mut view);
 
-    let (mut view, event_loop) = View::new(800, 600);
-    setup(&mut view).await;
+  my_app.run();
 
-    let window = view.window.clone(); // Clone the `Arc<Window>` for use in the event loop
-    let start_time = Instant::now(); // ✅ Track start time
-
-    struct MyApp {
-        view: View,
-        start_time: Instant,
-    }
-
-    impl MyApp {
-        fn new(_event_loop: &EventLoop<Self>) -> Self {
-            let (mut view, _) = View::new(800, 600);
-            Self {
-                view,
-                start_time: Instant::now(),
-            }
-        }
-    }
-
-    impl ApplicationHandler for MyApp {
-        fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-            event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
-        }
-
-        fn window_event(
-            &mut self,
-            event_loop: &ActiveEventLoop,
-            _window_id: winit::window::WindowId,
-            event: winit::event::WindowEvent,
-        ) {
-            match event {
-                winit::event::WindowEvent::CloseRequested => {
-                    println!("Closing window...");
-                    event_loop.exit();
-                }
-                _ => {}
-            }
-        }
-
-        fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-            let elapsed_time: f64 = self.start_time.elapsed().as_millis() as f64; // ✅ Convert to ms
-            self.view.render_frame(elapsed_time);
-            self.view.window.request_redraw();
-        }
-    }
+  // hangs until window closed
+  event_loop.run_app(&mut my_app);
 }
 
 /// **WebAssembly Main Function**
